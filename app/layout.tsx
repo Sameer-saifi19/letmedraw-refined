@@ -7,7 +7,8 @@ import { ModalProvider } from "@/providers/modal-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "Miro Clone",
+    title: "Letmedraw",
+    description: "Ai based real time collaboration board"
 };
 
 export default function RootLayout({

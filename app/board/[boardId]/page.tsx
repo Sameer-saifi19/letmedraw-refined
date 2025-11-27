@@ -10,7 +10,7 @@ interface BoardIdPageProps {
 
 const BoardIdPage = ({ params }: BoardIdPageProps) => {
     useEffect(() => {
-        document.title = `Board - Miro Clone`;
+        document.title = `Board - Letmedraw`;
     }, []);
 
     return (
