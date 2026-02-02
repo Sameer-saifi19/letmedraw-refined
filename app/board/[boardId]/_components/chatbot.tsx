@@ -28,7 +28,7 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
         {
             id: "1",
             role: "assistant",
-            content: "Hi! I can help you create shapes on the board. Try saying 'create a rectangle' or 'add a circle'.",
+            content: "Hi! I can help you create shapes and text on the board. Try saying 'create a red rectangle' or 'add text Hello World' or 'create a blue circle'.",
         },
     ]);
     const [input, setInput] = useState("");
@@ -38,6 +38,7 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
         needsWidth?: boolean;
         needsHeight?: boolean;
         needsRadius?: boolean;
+        color?: Color;
     } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -45,10 +46,12 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
     const insertLayer = useMutation(
         (
             { storage, setMyPresence },
-            layerType: LayerType.Rectangle | LayerType.Ellipse,
+            layerType: LayerType.Rectangle | LayerType.Ellipse | LayerType.Text,
             position: Point,
             width: number,
-            height: number
+            height: number,
+            color?: Color,
+            textValue?: string
         ) => {
             const liveLayers = storage.get("layers");
             if (liveLayers.size >= MAX_LAYERS) {
@@ -57,13 +60,16 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
 
             const liveLayerIds = storage.get("layerIds");
             const layerId = nanoid();
+            const fillColor = color || lastUsedColor;
+            
             const layer = new LiveObject({
                 type: layerType,
                 x: position.x,
                 y: position.y,
                 height,
                 width,
-                fill: lastUsedColor,
+                fill: fillColor,
+                ...(textValue && { value: textValue }),
             });
 
             liveLayerIds.push(layerId);
@@ -118,6 +124,8 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                     y: -camera.y + 200 
                 };
 
+                const color = pendingShape.color || lastUsedColor;
+
                 if (pendingShape.needsRadius && numbers && numbers.length > 0) {
                     const radius = parseInt(numbers[0]);
                     if (radius > 0) {
@@ -125,7 +133,8 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                             LayerType.Ellipse,
                             position,
                             radius * 2,
-                            radius * 2
+                            radius * 2,
+                            color
                         );
                         addMessage(
                             "assistant",
@@ -148,7 +157,8 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                                 LayerType.Rectangle,
                                 position,
                                 width,
-                                height
+                                height,
+                                color
                             );
                             addMessage(
                                 "assistant",
@@ -176,7 +186,8 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                                 LayerType.Rectangle,
                                 position,
                                 size,
-                                size
+                                size,
+                                color
                             );
                             addMessage(
                                 "assistant",
@@ -215,13 +226,34 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
 
             const data = await response.json();
 
-            // Check if dimensions are needed
-            if (data.needsDimensions) {
+            // Handle text creation
+            if (data.actionType === "text") {
+                const text = data.text || "Text";
+                const color = data.color || lastUsedColor;
+                const x = data.x !== undefined ? data.x : -camera.x + 200;
+                const y = data.y !== undefined ? data.y : -camera.y + 200;
+                const position: Point = { x, y };
+
+                // Default text dimensions
+                const width = 200;
+                const height = 100;
+
+                insertLayer(LayerType.Text, position, width, height, color, text);
+                addMessage(
+                    "assistant",
+                    `Perfect! I've created text "${text}" on the board.`
+                );
+            }
+            // Check if dimensions are needed for shapes
+            else if (data.needsDimensions) {
                 const shapeType = data.shapeType;
+                const color = data.color || lastUsedColor;
+                
                 if (shapeType === "circle") {
                     setPendingShape({
                         shapeType: "circle",
                         needsRadius: true,
+                        color,
                     });
                     addMessage(
                         "assistant",
@@ -231,6 +263,7 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                     setPendingShape({
                         shapeType: "square",
                         needsWidth: true,
+                        color,
                     });
                     addMessage(
                         "assistant",
@@ -241,6 +274,7 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                         shapeType: "rectangle",
                         needsWidth: true,
                         needsHeight: true,
+                        color,
                     });
                     addMessage(
                         "assistant",
@@ -252,6 +286,7 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                 const shapeType = data.shapeType;
                 const width = data.width || 100;
                 const height = data.height || 100;
+                const color = data.color || lastUsedColor;
                 // Use provided position or calculate based on camera
                 const x = data.x !== undefined ? data.x : -camera.x + 200;
                 const y = data.y !== undefined ? data.y : -camera.y + 200;
@@ -259,13 +294,13 @@ export const Chatbot = ({ lastUsedColor, camera }: ChatbotProps) => {
                 const position: Point = { x, y };
 
                 if (shapeType === "circle") {
-                    insertLayer(LayerType.Ellipse, position, width, height);
+                    insertLayer(LayerType.Ellipse, position, width, height, color);
                     addMessage(
                         "assistant",
                         `Great! I've created a circle with radius ${width / 2}px.`
                     );
                 } else {
-                    insertLayer(LayerType.Rectangle, position, width, height);
+                    insertLayer(LayerType.Rectangle, position, width, height, color);
                     addMessage(
                         "assistant",
                         `Perfect! I've created a ${shapeType} with width ${width}px and height ${height}px.`
