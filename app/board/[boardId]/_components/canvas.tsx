@@ -47,6 +47,7 @@ import { SelectionTools } from "./selection-tools";
 import { Path } from "./path";
 import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { ResetCamera } from "./reset-camera";
+import { Chatbot } from "./chatbot";
 
 import { toPng } from "html-to-image";
 import { useQuery } from "convex/react";
@@ -568,6 +569,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 setLastUsedColor={setLastUsedColor}
                 lastUsedColor={lastUsedColor}
             />
+            <Chatbot lastUsedColor={lastUsedColor} camera={camera} />
             <svg
                 ref={svgRef}
                 className="h-[100vh] w-[100vw]"
